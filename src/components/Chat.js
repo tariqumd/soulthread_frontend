@@ -1,81 +1,38 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Chat.css";
+import axios from "axios"; // Import axios for making HTTP requests
+import "./Chat.css"; // Import the CSS file for styling
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const ws = useRef(null); // WebSocket reference
   const navigate = useNavigate();
   const messageInput = useRef(null); // Ref for the input field to focus after sending
 
-  useEffect(() => {
-    // Establish WebSocket connection directly to Django WebSocket endpoint
-    const connectWebSocket = () => {
-      // Check if the WebSocket is already open
-      if (ws.current && ws.current.readyState === WebSocket.OPEN) return;
+  // Function to send the message to the backend (Django API)
+  const sendMessageToBackend = async (message) => {
+    try {
+      const response = await axios.post("http://localhost:8000/chat/chatbot/", {
+        message: message,
+      });
 
-      ws.current = new WebSocket("ws://localhost:8000/ws/chat/soulthread/"); // Direct WebSocket connection
-
-      ws.current.onopen = () => {
-        console.log("WebSocket connected");
-        setIsConnected(true);
-      };
-
-      ws.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data); // Parse JSON messages from Django
-          setMessages((prev) => [
-            ...prev,
-            { sender: data.sender || "bot", text: data.message },
-          ]);
-        } catch (err) {
-          console.error("Error parsing WebSocket message:", err);
-        }
-      };
-
-      ws.current.onclose = () => {
-        console.log("WebSocket disconnected");
-        setIsConnected(false);
-        // Attempt to reconnect after 3 seconds
-        setTimeout(connectWebSocket, 3000);
-      };
-
-      ws.current.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        setIsConnected(false);
-      };
-    };
-
-    connectWebSocket(); // Start WebSocket connection on mount
-
-    return () => {
-      if (ws.current) {
-        ws.current.close(); // Cleanup WebSocket connection when component unmounts
-      }
-    };
-  }, []); // Empty dependency array ensures this runs only once when the component mounts
+      const botReply = response.data.reply;
+      // Add the message from the user and the bot's reply to the message history
+      setMessages((prev) => [
+        ...prev,
+        { sender: "user", text: message },
+        { sender: "bot", text: botReply },
+      ]);
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
+  };
 
   const handleSendMessage = () => {
     if (newMessage.trim() !== "") {
-      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-        // Send the message to Django WebSocket server
-        ws.current.send(
-          JSON.stringify({
-            sender: "user",
-            message: newMessage,
-          })
-        );
-        setMessages((prev) => [
-          ...prev,
-          { sender: "user", text: newMessage },
-        ]);
-        setNewMessage("");
-        messageInput.current.focus(); // Ensure focus after sending
-      } else {
-        console.log("WebSocket is not connected. Retrying...");
-      }
+      sendMessageToBackend(newMessage);
+      setNewMessage(""); // Clear the input field after sending the message
+      messageInput.current.focus(); // Ensure focus after sending
     }
   };
 
@@ -147,13 +104,17 @@ const Chat = () => {
               <div key={index} style={{ display: "block", marginBottom: "10px" }}>
                 <div
                   className={`p-2 rounded ${
-                    msg.sender === "user" ? "user-message text-end" : "bg-light text-dark"
+                    msg.sender === "user"
+                      ? "user-message text-end"
+                      : "bot-message text-start"
                   }`}
                   style={{
                     display: "inline-block",
                     padding: "10px 15px",
                     fontSize: "1rem",
                     maxWidth: "80%",
+                    backgroundColor: msg.sender === "user" ? "#6f42c1" : "#e9ecef", // Purple for user, light background for bot
+                    color: msg.sender === "user" ? "white" : "black",
                   }}
                 >
                   {msg.text}

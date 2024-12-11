@@ -191,10 +191,22 @@ body {
 }
 
 .user-message {
-  background-color: #6a11cb; /* Replace with your desired color */
+  background-color: #6f42c1;
   color: white;
-  text-align: right;
   border-radius: 10px;
-  padding: 10px 15px; /* Adjust padding */
-  font-size: 1rem; /* Adjust font size */
+  padding: 10px 15px;
+  font-size: 1rem;
+  max-width: 80%;
+  text-align: right;
+}
+
+/* Bot message style */
+.bot-message {
+  background-color: #e9ecef;
+  color: black;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  max-width: 80%;
+  text-align: left;
 }
