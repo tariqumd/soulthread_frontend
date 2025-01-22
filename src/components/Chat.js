@@ -1,22 +1,38 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Import axios for making HTTP requests
-import "./Chat.css"; // Import the CSS file for styling
+import axios from "axios";
+import "./Chat.css";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const navigate = useNavigate();
-  const messageInput = useRef(null); // Ref for the input field to focus after sending
+  const messageInput = useRef(null);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("access_token");
+    if (!accessToken) {
+      navigate("/"); // Redirect to login if not authenticated
+    }
+  }, [navigate]);
 
   // Function to send the message to the backend (Django API)
   const sendMessageToBackend = async (message) => {
+    const accessToken = localStorage.getItem("access_token");
+
     try {
-      const response = await axios.post("http://localhost:8000/chat/chatbot/", {
-        message: message,
-      });
+      const response = await axios.post(
+        "http://localhost:8000/chat/chatbot/",
+        { message: message },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`, // Add the access token
+          },
+        }
+      );
 
       const botReply = response.data.reply;
+
       // Add the message from the user and the bot's reply to the message history
       setMessages((prev) => [
         ...prev,
@@ -25,6 +41,12 @@ const Chat = () => {
       ]);
     } catch (err) {
       console.error("Error sending message:", err);
+
+      // Check if the error is due to authentication
+      if (err.response && err.response.status === 401) {
+        alert("Session expired. Please log in again.");
+        handleLogout();
+      }
     }
   };
 
@@ -113,7 +135,7 @@ const Chat = () => {
                     padding: "10px 15px",
                     fontSize: "1rem",
                     maxWidth: "80%",
-                    backgroundColor: msg.sender === "user" ? "#6f42c1" : "#e9ecef", // Purple for user, light background for bot
+                    backgroundColor: msg.sender === "user" ? "#6f42c1" : "#e9ecef",
                     color: msg.sender === "user" ? "white" : "black",
                   }}
                 >
